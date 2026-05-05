@@ -1,4 +1,13 @@
-"""Verify Supabase-issued JWTs from `Authorization: Bearer ...`."""
+"""Verify Supabase-issued JWTs from `Authorization: Bearer ...`.
+
+Supabase signs every user JWT with the project's HS256 secret
+(Settings → API → JWT Settings). The token's `aud` claim is fixed at
+`"authenticated"` for any session-bearing user — that's the audience
+we validate against. If you swap auth providers (Auth0, Clerk, etc.),
+update both the audience and the algorithm here. A 401 with
+"Invalid or expired token" is most often a JWT-secret mismatch — the
+secret in your .env must match the one in the Supabase dashboard.
+"""
 import os
 
 import jwt
