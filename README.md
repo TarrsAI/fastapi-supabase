@@ -5,7 +5,7 @@ Async-first, OpenAPI auto-generated, ML/data-friendly.
 
 ## What's included
 
-- FastAPI + Uvicorn (async, port 3000)
+- FastAPI + Uvicorn (async, port 8080)
 - httpx async Supabase REST client (no heavy `psycopg2` setup needed)
 - JWT verification middleware (PyJWT)
 - Pydantic v2 input validation
@@ -25,7 +25,7 @@ Tarrs auto-injects:
 For the chat example, also set `ANTHROPIC_API_KEY` via
 Tarrs Settings → Sandbox secrets.
 
-Sandbox runs `uvicorn` on port 3000.
+Sandbox runs `uvicorn` on port 8080 (Tarrs convention for Python services; frontend is :3000, Express backend is :4000).
 
 ## Local dev
 
@@ -33,12 +33,12 @@ Sandbox runs `uvicorn` on port 3000.
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env
-uvicorn app.main:app --reload --port 3000
+uvicorn app.main:app --reload --port 8080
 ```
 
 Apply the migration in `supabase/migrations/001_posts.sql` first.
 
-OpenAPI: http://localhost:3000/docs
+OpenAPI: http://localhost:8080/docs
 
 ## Deploy
 
