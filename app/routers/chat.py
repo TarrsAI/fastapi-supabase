@@ -5,6 +5,10 @@ returns a StreamingResponse wrapping an async generator from
 `app.agents.simple.run_agent`. No separate worker container needed —
 the agent runs in this same uvicorn process, in the same coroutine
 that handles the HTTP request.
+
+Note that this route does NOT return the JSON envelope (other routes
+do). SSE is a different content-type by design; the envelope only
+makes sense for one-shot JSON responses.
 """
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -30,7 +34,7 @@ async def chat(
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",  # nginx + ALB: don't buffer
+            "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         },
     )

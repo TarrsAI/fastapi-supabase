@@ -1,45 +1,33 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Path
 
 from app.core.auth import CurrentUser, get_current_user
-from app.core.supabase import supabase
+from app.core.response import Envelope, ok
+from app.schemas.post import PostCreate, PostRead
+from app.services import posts as posts_service
 
 router = APIRouter()
 
 
-class PostIn(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    body: str = Field(min_length=1, max_length=10_000)
-
-
-class Post(BaseModel):
-    id: str
-    title: str
-    body: str
-    author_id: str
-    created_at: str
-
-
-@router.get("/posts", response_model=list[Post])
-async def list_posts(_user: CurrentUser = Depends(get_current_user)) -> list:
-    return await supabase.select(
-        "posts",
-        columns="id, title, body, author_id, created_at",
-        order="created_at.desc",
-        limit=100,
-    )
-
-
-@router.post("/posts", response_model=Post, status_code=201)
-async def create_post(
-    payload: PostIn,
+@router.get("/posts", response_model=Envelope[list[PostRead]])
+def list_posts(
     user: CurrentUser = Depends(get_current_user),
-) -> dict:
-    return await supabase.insert(
-        "posts",
-        {
-            "title": payload.title,
-            "body": payload.body,
-            "author_id": user.id,
-        },
-    )
+) -> Envelope[list[PostRead]]:
+    rows = posts_service.list_posts(user)
+    return ok([PostRead(**r) for r in rows])
+
+
+@router.post("/posts", response_model=Envelope[PostRead], status_code=201)
+def create_post(
+    payload: PostCreate,
+    user: CurrentUser = Depends(get_current_user),
+) -> Envelope[PostRead]:
+    row = posts_service.create_post(user, payload.title, payload.body)
+    return ok(PostRead(**row), message="Post created")
+
+
+@router.delete("/posts/{post_id}", status_code=204)
+def delete_post(
+    post_id: str = Path(min_length=36, max_length=36),
+    user: CurrentUser = Depends(get_current_user),
+) -> None:
+    posts_service.delete_post(user, post_id)

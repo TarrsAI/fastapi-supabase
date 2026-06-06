@@ -15,7 +15,6 @@ from typing import Any
 
 import httpx
 
-
 ANTHROPIC_API = "https://api.anthropic.com/v1/messages"
 MODEL = "claude-sonnet-4-6"  # bump as needed
 
@@ -42,41 +41,40 @@ async def run_agent(prompt: str) -> AsyncGenerator[str, None]:
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        async with client.stream(
-            "POST",
-            ANTHROPIC_API,
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json=payload,
-        ) as res:
-            if res.status_code != 200:
-                body = await res.aread()
-                yield _frame(
-                    {"error": f"upstream {res.status_code}: {body.decode()[:200]}"},
-                )
-                return
-            async for line in res.aiter_lines():
-                if not line.startswith("data: "):
-                    continue
-                data = line.removeprefix("data: ").strip()
-                if not data:
-                    continue
-                try:
-                    event = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
-                # Forward token deltas as compact frames.
-                if event.get("type") == "content_block_delta":
-                    delta = event.get("delta", {})
-                    if delta.get("type") == "text_delta":
-                        text = delta.get("text", "")
-                        yield _frame({"text": text})
-                elif event.get("type") == "message_stop":
-                    yield _frame({"done": True})
+    async with httpx.AsyncClient(timeout=60.0) as client, client.stream(
+        "POST",
+        ANTHROPIC_API,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json=payload,
+    ) as res:
+        if res.status_code != 200:
+            body = await res.aread()
+            yield _frame(
+                {"error": f"upstream {res.status_code}: {body.decode()[:200]}"},
+            )
+            return
+        async for line in res.aiter_lines():
+            if not line.startswith("data: "):
+                continue
+            data = line.removeprefix("data: ").strip()
+            if not data:
+                continue
+            try:
+                event = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            # Forward token deltas as compact frames.
+            if event.get("type") == "content_block_delta":
+                delta = event.get("delta", {})
+                if delta.get("type") == "text_delta":
+                    text = delta.get("text", "")
+                    yield _frame({"text": text})
+            elif event.get("type") == "message_stop":
+                yield _frame({"done": True})
 
 
 def _frame(obj: dict[str, Any]) -> str:
